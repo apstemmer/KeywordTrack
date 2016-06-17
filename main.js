@@ -15,6 +15,7 @@ var express = require('express');
 var querystring = require('querystring');
 var keyword = '';
 var ranked = {};
+var kwlist = {};
 
 var app = express();
 app.use(express.static('/'));
@@ -27,6 +28,7 @@ var creds = {
 };
 
 var client = new Twitter(creds);
+client.options.keywords = [];
 
 function dispData(li, topnum){
 	//console.log(li);
@@ -66,8 +68,9 @@ function dispData(li, topnum){
 			}
 		}
 	}
-	fs.writeFile('data.txt',JSON.stringify(tops));
-	//console.log(tops);
+	
+	console.log(tops);
+	return tops;
 }
 
 
@@ -83,39 +86,47 @@ var Server = http.createServer(function(req,res){
 		console.log('kw: ' + keyword);
 
 		
+		//if keyword is not being watched, create new stream
+		console.log(client.options.keywords);
+		if(keyword !== '' && client.options.keywords.indexOf(keyword) === -1){
 
-		if(keyword !== ''){
 			var stream = client.stream('statuses/filter', {track: keyword});
+			client.options.keywords.push(keyword);
+			console.log("str: ");//client obj: VERSION, options, request
+
+
+			stream.on('data', function(tweet) {
+			  		//console.log(tweet.lang + '\n');
+			  		//console.log(tweet.text.split(" "));
+			  		var wordList = tweet.text.toLowerCase().split(" ");
+			  		var patt = /\/|@/;//to filter words in tweet
+			  		
+			  		for(var i in wordList){
+			  			var word = wordList[i];
+			  			if(!patt.test(word)){
+				  			if(word in ranked){
+				  				ranked[word] += 1;
+				  			}else{
+				  				ranked[word] = 1;
+				  			}
+				  		}
+			  		}
+			  		//console.log(ranked);
+			});
+
+			stream.on('error', function(error) {
+			  console.log('e1: ' + error.source+ "|"+Object.keys(error));
+			});
 		}
 
-		stream.on('data', function(tweet) {
-		  		//console.log(tweet.lang + '\n');
-		  		//console.log(tweet.text.split(" "));
-		  		var wordList = tweet.text.split(" ");
-		  		var patt = /\/|@/;
-		  		
-		  		for(var i in wordList){
-		  			var word = wordList[i];
-		  			if(!patt.test(word)){
-			  			if(word in ranked){
-			  				ranked[word] += 1;
-			  			}else{
-			  				ranked[word] = 1;
-			  			}
-			  		}
-		  		}
-		  		//console.log(ranked);
-		});
 
-		setInterval(function(){dispData(ranked,1000);},10000);
+		//setInterval(function(){dispData(ranked,1000);},10000);
 
-		stream.on('error', function(error) {
-			  console.log('e1: ' + error);
-			});
+		
 		 
 
 		res.writeHead(200, {'content-type':'text/html'});
-		res.write(cnt.toString());
+		res.write(JSON.stringify(dispData(ranked,10)));
 		res.end();
 
 	}

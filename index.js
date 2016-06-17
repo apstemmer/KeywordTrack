@@ -1,23 +1,40 @@
-var keyword = 'gun';
-var rep;
+var keyword = 'trump';
+var resp;
 
-$(document).ready(function(){
+function dispData(data){
+	var lis = document.getElementById("dlist");
+	lis.innerHTML = "";
+	for(var i in data){
+		console.log(data[i])
+		var node = document.createElement("LI");            
+		var textnode = document.createTextNode(Object.keys(data[i])[0]);    
+		node.appendChild(textnode);                         
+		lis.appendChild(node);
+	}
+}
 
-	function getData(){
+function getData(){
 		console.log("sent req");
 
 		$.ajax({
 			url: "http://localhost:8080/?kw=" + keyword,
 			success: function(data){
-				console.log("got resp" + data);
+				resp = JSON.parse(data);
+				console.log(resp);
+				dispData(resp);
+				//console.log(typeof JSON.parse(data));
 			},
 			error: function(jq,stat,err){
 				console.log(err);
 			}
 		});
 
-		//rep = setTimeout(getData(),5000);
 	}
 
-	getData(); 
+
+$(document).ready(function(){
+
+	var ref = setInterval(getData,500);//start pulling data every 5 secs
+
+	 
 });
